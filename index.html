@@ -127,22 +127,6 @@
   .auth-error { font-size: 13px; color: var(--stamp); margin-bottom: 10px; min-height: 0; }
   .auth-error:empty { display: none; }
 
-  .requests-modal { max-width: 560px; text-align: left; }
-  .requests-head h3 { font-family: var(--font-head); font-size: 22px; }
-  .requests-head p { font-size: 13.5px; color: var(--ink-soft); margin-top: 6px; margin-bottom: 22px; }
-  .requests-list { max-height: 60vh; overflow-y: auto; }
-  .requests-empty { font-size: 14px; color: var(--ink-soft); padding: 20px 0; text-align: center; }
-  .request-item { border-top: 1px solid var(--line); padding: 16px 0; }
-  .request-item:first-child { border-top: none; }
-  .request-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-  .request-item-cat { font-family: var(--font-head); font-size: 15.5px; font-weight: 600; }
-  .request-item-date { font-size: 12px; color: var(--ink-soft); flex-shrink: 0; }
-  .request-item-meta { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
-  .request-item-details { font-size: 13.5px; color: var(--ink); margin-top: 8px; }
-  .request-status {
-    display: inline-block; font-size: 11px; font-family: var(--font-mono); padding: 2px 9px;
-    border-radius: 3px; background: rgba(169,120,42,0.14); color: var(--brass); margin-top: 8px;
-  }
   .auth-success-msg { font-size: 13px; color: var(--brass); background: rgba(169,120,42,0.12); border-radius: var(--radius-s); padding: 10px 12px; margin-bottom: 10px; }
   .auth-success-msg:empty { display: none; padding: 0; }
 
@@ -455,7 +439,7 @@
       <a href="#" id="openSignup" class="nav-cta">Sign up</a>
     </div>
     <div class="nav-auth" id="navAuthLoggedIn" style="display:none;">
-      <a href="#" id="openRequests" class="nav-link-auth">My requests</a>
+      <a href="dashboard.html" id="openRequests" class="nav-link-auth">My requests</a>
       <span class="nav-user" id="navUserName"></span>
       <a href="#" id="logoutLink" class="nav-link-auth">Log out</a>
     </div>
@@ -530,19 +514,6 @@
       <div class="auth-success-msg" id="resetSuccess"></div>
       <button type="submit" class="btn-primary auth-submit">Update password</button>
     </form>
-  </div>
-</div>
-
-<div class="auth-overlay" id="requestsOverlay">
-  <div class="auth-modal requests-modal">
-    <button class="auth-close" id="requestsClose" aria-label="Close">&times;</button>
-    <div class="requests-head">
-      <h3>My requests</h3>
-      <p>Every quote request you've submitted, and where it stands.</p>
-    </div>
-    <div id="requestsList" class="requests-list">
-      <div class="requests-empty" id="requestsLoading">Loading&hellip;</div>
-    </div>
   </div>
 </div>
 
@@ -1140,8 +1111,8 @@
     }
     if (result.data.session) {
       refreshNav(result.data.session);
-      closeAuth();
       signupForm.reset();
+      window.location.href = 'dashboard.html';
     } else {
       signupSuccess.textContent = 'Check your email to confirm your account, then log in.';
       signupForm.reset();
@@ -1162,8 +1133,8 @@
       return;
     }
     refreshNav(result.data.session);
-    closeAuth();
     loginForm.reset();
+    window.location.href = 'dashboard.html';
   });
 
   forgotForm.addEventListener('submit', async function(e){
@@ -1209,60 +1180,6 @@
     await supabaseClient.auth.signOut();
     refreshNav(null);
   });
-
-  /* ---------- My requests ---------- */
-  var requestsOverlay = document.getElementById('requestsOverlay');
-  var requestsList = document.getElementById('requestsList');
-
-  function escapeHtml(str) {
-    var div = document.createElement('div');
-    div.textContent = str || '';
-    return div.innerHTML;
-  }
-
-  function formatDate(iso) {
-    try {
-      return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    } catch (e) { return iso; }
-  }
-
-  async function openRequests() {
-    requestsOverlay.classList.add('show');
-    requestsList.innerHTML = '<div class="requests-empty" id="requestsLoading">Loading&hellip;</div>';
-    if (!currentSession) return;
-
-    var result = await supabaseClient
-      .from('quote_requests')
-      .select('*')
-      .eq('user_id', currentSession.user.id)
-      .order('created_at', { ascending: false });
-
-    if (result.error) {
-      requestsList.innerHTML = '<div class="requests-empty">Couldn\'t load your requests right now.</div>';
-      return;
-    }
-    if (!result.data || result.data.length === 0) {
-      requestsList.innerHTML = '<div class="requests-empty">No quote requests yet. Once you submit one, it\'ll show up here.</div>';
-      return;
-    }
-
-    requestsList.innerHTML = result.data.map(function(r){
-      return '<div class="request-item">' +
-        '<div class="request-item-top">' +
-          '<div class="request-item-cat">' + escapeHtml(r.category || 'General inquiry') + '</div>' +
-          '<div class="request-item-date">' + formatDate(r.created_at) + '</div>' +
-        '</div>' +
-        '<div class="request-item-meta">' + escapeHtml(r.volume || '') + (r.destination ? ' &middot; to ' + escapeHtml(r.destination) : '') + '</div>' +
-        (r.details ? '<div class="request-item-details">' + escapeHtml(r.details) + '</div>' : '') +
-        '<div class="request-status">' + escapeHtml(r.status || 'new') + '</div>' +
-      '</div>';
-    }).join('');
-  }
-  function closeRequests() { requestsOverlay.classList.remove('show'); }
-
-  document.getElementById('openRequests').addEventListener('click', function(e){ e.preventDefault(); openRequests(); });
-  document.getElementById('requestsClose').addEventListener('click', closeRequests);
-  requestsOverlay.addEventListener('click', function(e){ if (e.target === requestsOverlay) closeRequests(); });
 
   supabaseClient.auth.onAuthStateChange(function(event, session){
     if (event === 'PASSWORD_RECOVERY') {

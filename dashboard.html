@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Account — Keista Mall</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --paper: #ECE6D6; --paper-2: #E2DBC6; --ink: #1C2B39; --ink-soft: #45566A;
+    --navy: #16324F; --navy-deep: #0F2236; --brass: #A9782A; --brass-light: #C99A46;
+    --stamp: #A5432C; --line: #C7BFA8;
+    --font-head: 'Fraunces', serif; --font-body: 'IBM Plex Sans', sans-serif; --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper); color: var(--ink); font-family: var(--font-body);
+    font-size: 15px; line-height: 1.55;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+  h1, h2, h3 { font-family: var(--font-head); margin: 0; }
+  a { color: inherit; }
+
+  header {
+    background: var(--navy-deep); color: var(--paper);
+    padding: 18px 0; padding-top: calc(18px + env(safe-area-inset-top, 0px));
+  }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; }
+  .brand { font-family: var(--font-head); font-size: 19px; font-weight: 700; display: flex; align-items: center; gap: 9px; text-decoration: none; color: var(--paper); }
+  .brand svg { width: 26px; height: 26px; flex-shrink: 0; }
+  .header-actions { display: flex; align-items: center; gap: 18px; }
+  .header-actions a { font-size: 13.5px; color: rgba(236,230,214,0.82); text-decoration: none; }
+  .header-actions a:hover { color: var(--paper); }
+  .logout-btn {
+    background: none; border: 1px solid rgba(236,230,214,0.3); color: var(--paper);
+    padding: 7px 14px; border-radius: 4px; font-family: var(--font-body); font-size: 13px; cursor: pointer;
+  }
+  .logout-btn:hover { border-color: var(--brass-light); }
+
+  .gate { display: flex; align-items: center; justify-content: center; min-height: 70vh; padding: 20px; text-align: center; }
+  .gate p { color: var(--ink-soft); font-size: 14.5px; }
+
+  main { padding: 40px 0 70px; }
+
+  .welcome { margin-bottom: 34px; }
+  .welcome .kicker { font-family: var(--font-head); font-style: italic; font-size: 14px; color: var(--brass); }
+  .welcome h1 { font-size: 30px; margin-top: 8px; }
+  .welcome p { color: var(--ink-soft); font-size: 14.5px; margin-top: 8px; max-width: 56ch; }
+
+  .action-row { display: flex; gap: 14px; margin-top: 22px; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--brass); color: var(--navy-deep); font-weight: 600; border: none; text-decoration: none;
+    padding: 12px 20px; border-radius: 4px; font-size: 14.5px; cursor: pointer; display: inline-block;
+  }
+  .btn-primary:hover { background: var(--brass-light); }
+  .btn-ghost {
+    border: 1px solid var(--line); color: var(--ink); text-decoration: none;
+    padding: 12px 20px; border-radius: 4px; font-size: 14.5px; background: transparent; display: inline-block;
+  }
+  .btn-ghost:hover { border-color: var(--brass); }
+
+  .stats-row { display: flex; gap: 14px; margin-bottom: 36px; flex-wrap: wrap; }
+  .stat-card {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
+    padding: 16px 20px; flex: 1; min-width: 130px;
+  }
+  .stat-card .num { font-family: var(--font-head); font-size: 26px; color: var(--brass); }
+  .stat-card .lbl { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+
+  .section-title { font-size: 20px; margin-bottom: 4px; }
+  .section-sub { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 20px; }
+
+  .requests-list { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .requests-empty { font-size: 14px; color: var(--ink-soft); padding: 34px 24px; text-align: center; }
+  .request-item { border-top: 1px solid var(--line); padding: 18px 22px; }
+  .request-item:first-child { border-top: none; }
+  .request-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .request-item-cat { font-family: var(--font-head); font-size: 16.5px; font-weight: 600; }
+  .request-item-date { font-size: 12px; color: var(--ink-soft); flex-shrink: 0; }
+  .request-item-meta { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+  .request-item-details { font-size: 13.5px; color: var(--ink); margin-top: 8px; }
+  .request-status {
+    display: inline-block; font-size: 11px; font-family: var(--font-mono); padding: 2px 9px;
+    border-radius: 3px; background: rgba(169,120,42,0.14); color: var(--brass); margin-top: 10px;
+    text-transform: capitalize;
+  }
+
+  .account-box {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
+    padding: 22px 24px; margin-top: 40px; display: flex; justify-content: space-between;
+    align-items: center; flex-wrap: wrap; gap: 14px;
+  }
+  .account-box .name { font-family: var(--font-head); font-size: 17px; }
+  .account-box .email { font-size: 13px; color: var(--ink-soft); margin-top: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a href="index.html" class="brand">
+      <svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="22" cy="22" r="19" fill="none" stroke="#C99A46" stroke-width="1.5"/>
+        <circle cx="22" cy="22" r="14" fill="none" stroke="#C99A46" stroke-width="0.75" opacity="0.5"/>
+        <path d="M22 2.5v4.5M22 37v4.5M2.5 22h4.5M37 22h4.5" stroke="#C99A46" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+        <text x="22" y="29.5" text-anchor="middle" font-family="Fraunces, serif" font-style="italic" font-weight="600" font-size="18" fill="#C99A46">K</text>
+      </svg>
+      Keista Mall
+    </a>
+    <div class="header-actions">
+      <a href="index.html">Home</a>
+      <a href="index.html#contact">New request</a>
+      <button class="logout-btn" id="logoutBtn">Log out</button>
+    </div>
+  </div>
+</header>
+
+<div class="gate" id="gateView" style="display:none;">
+  <p>You need to be logged in to view this page. Redirecting you to log in&hellip;</p>
+</div>
+
+<main id="dashboardView" style="display:none;">
+  <div class="wrap">
+    <div class="welcome">
+      <div class="kicker">Your account</div>
+      <h1 id="welcomeName">Welcome back.</h1>
+      <p>Track every sourcing request you've sent us, and start a new one whenever you're ready.</p>
+      <div class="action-row">
+        <a href="index.html#contact" class="btn-primary">Start a new request</a>
+        <a href="index.html#categories" class="btn-ghost">Browse categories</a>
+      </div>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="section-title">Your requests</div>
+    <div class="section-sub">Every quote request you've submitted, most recent first.</div>
+    <div class="requests-list" id="requestsList">
+      <div class="requests-empty">Loading&hellip;</div>
+    </div>
+
+    <div class="account-box">
+      <div>
+        <div class="name" id="accountName"></div>
+        <div class="email" id="accountEmail"></div>
+      </div>
+      <a href="index.html#contact" class="btn-ghost">Update details via a new request</a>
+    </div>
+  </div>
+</main>
+
+<script>
+  var SUPABASE_URL = 'https://ebovdmanbajozqebcvoc.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVib3ZkbWFuYmFqb3pxZWJjdm9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDA3MDMsImV4cCI6MjEwNTY3NjcwM30.Cg_H69k4ImXchiuTo_WSA5TN_fVatQfiU--fUEagrXg';
+  var supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  var gateView = document.getElementById('gateView');
+  var dashboardView = document.getElementById('dashboardView');
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+  function formatDate(iso) {
+    try { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+    catch (e) { return iso; }
+  }
+
+  function renderStats(requests) {
+    var byStatus = {};
+    requests.forEach(function(r){ byStatus[r.status || 'new'] = (byStatus[r.status || 'new'] || 0) + 1; });
+    var cards = [
+      { num: requests.length, lbl: 'Total requests' },
+      { num: byStatus['new'] || 0, lbl: 'Awaiting review' },
+      { num: (byStatus['contacted'] || 0) + (byStatus['quoted'] || 0), lbl: 'In progress' },
+      { num: byStatus['won'] || 0, lbl: 'Completed' }
+    ];
+    document.getElementById('statsRow').innerHTML = cards.map(function(c){
+      return '<div class="stat-card"><div class="num">' + c.num + '</div><div class="lbl">' + c.lbl + '</div></div>';
+    }).join('');
+  }
+
+  function renderRequests(requests) {
+    var el = document.getElementById('requestsList');
+    if (requests.length === 0) {
+      el.innerHTML = '<div class="requests-empty">No quote requests yet. Once you submit one, it\'ll show up here.</div>';
+      return;
+    }
+    el.innerHTML = requests.map(function(r){
+      return '<div class="request-item">' +
+        '<div class="request-item-top">' +
+          '<div class="request-item-cat">' + escapeHtml(r.category || 'General inquiry') + '</div>' +
+          '<div class="request-item-date">' + formatDate(r.created_at) + '</div>' +
+        '</div>' +
+        '<div class="request-item-meta">' + escapeHtml(r.volume || '') + (r.destination ? ' &middot; to ' + escapeHtml(r.destination) : '') + '</div>' +
+        (r.details ? '<div class="request-item-details">' + escapeHtml(r.details) + '</div>' : '') +
+        '<div class="request-status">' + escapeHtml(r.status || 'new') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  async function loadDashboard(session) {
+    var user = session.user;
+    var fullName = (user.user_metadata && user.user_metadata.full_name) || user.email.split('@')[0];
+    document.getElementById('welcomeName').textContent = 'Welcome back, ' + fullName.split(' ')[0] + '.';
+    document.getElementById('accountName').textContent = fullName;
+    document.getElementById('accountEmail').textContent = user.email;
+
+    var result = await supabaseClient
+      .from('quote_requests')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    var requests = result.error ? [] : (result.data || []);
+    renderStats(requests);
+    renderRequests(requests);
+  }
+
+  async function init() {
+    var sessionResult = await supabaseClient.auth.getSession();
+    var session = sessionResult.data.session;
+    if (!session) {
+      gateView.style.display = 'flex';
+      setTimeout(function(){ window.location.href = 'index.html'; }, 1200);
+      return;
+    }
+    dashboardView.style.display = 'block';
+    loadDashboard(session);
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', async function(){
+    await supabaseClient.auth.signOut();
+    window.location.href = 'index.html';
+  });
+
+  init();
+</script>
+
+</body>
+</html>
