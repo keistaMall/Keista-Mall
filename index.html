@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Keista Mall: Import from anywhere in the world</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --paper: #ECE6D6;
+    --paper-2: #E2DBC6;
+    --ink: #1C2B39;
+    --ink-soft: #45566A;
+    --navy: #16324F;
+    --navy-deep: #0F2236;
+    --brass: #A9782A;
+    --brass-light: #C99A46;
+    --stamp: #A5432C;
+    --line: #C7BFA8;
+    --line-on-navy: rgba(236, 230, 214, 0.22);
+    --radius-s: 3px;
+    --radius-m: 6px;
+    --font-head: 'Fraunces', serif;
+    --font-body: 'IBM Plex Sans', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  :root:not([data-theme="light"]) {
+    /* keep single theme intentionally, trade-document aesthetic doesn't invert well */
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.55;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    -webkit-font-smoothing: antialiased;
+  }
+  img { max-width: 100%; display: block; }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 32px; }
+  @media (max-width: 640px) { .wrap { padding: 0 20px; } }
+
+  h1, h2, h3 { font-family: var(--font-head); font-weight: 600; margin: 0; color: var(--ink); }
+  .rule { border: none; border-top: 1px solid var(--line); margin: 0; }
+  .mono { font-family: var(--font-mono); letter-spacing: 0.01em; }
+
+  /* ---------- Header ---------- */
+  header {
+    background: var(--navy-deep);
+    color: var(--paper);
+    position: sticky; top: 0; z-index: 40;
+    padding-top: env(safe-area-inset-top, 0px);
+    border-bottom: 1px solid rgba(169,120,42,0.35);
+  }
+  .nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 0;
+  }
+  .brand {
+    font-family: var(--font-head); font-size: 21px; font-weight: 700;
+    letter-spacing: 0.01em; color: var(--paper);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand .logo-mark { width: 34px; height: 34px; flex-shrink: 0; }
+  .nav-links { display: flex; gap: 30px; align-items: center; }
+  .nav-links a {
+    text-decoration: none; color: rgba(236,230,214,0.82); font-size: 14.5px;
+    transition: color .15s ease;
+  }
+  .nav-links a:hover { color: var(--paper); }
+  .nav-cta {
+    background: var(--brass); color: var(--navy-deep); font-weight: 600;
+    padding: 9px 18px; border-radius: var(--radius-s); text-decoration: none;
+    font-size: 14px; transition: background .15s ease;
+  }
+  .nav-cta:hover { background: var(--brass-light); }
+  .nav-toggle { display: none; }
+  @media (max-width: 820px) {
+    .nav-links { display: none; }
+    .nav-toggle { display: block; background: none; border: 1px solid var(--line-on-navy); color: var(--paper); padding: 8px 12px; border-radius: var(--radius-s); font-family: var(--font-body); }
+  }
+
+  .nav-auth { display: flex; align-items: center; gap: 16px; }
+  .nav-link-auth { color: rgba(236,230,214,0.82); text-decoration: none; font-size: 14px; }
+  .nav-link-auth:hover { color: var(--paper); }
+  .nav-user { color: var(--paper); font-size: 14px; font-family: var(--font-head); font-style: italic; }
+  .nav-cta-quote { margin-left: 4px; }
+  @media (max-width: 620px) { .nav-cta-quote { display: none; } }
+  @media (max-width: 400px) { .nav-link-auth { display: none; } }
+
+  .auth-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(15,34,54,0.72); align-items: center; justify-content: center;
+    padding: 20px; backdrop-filter: blur(2px);
+  }
+  .auth-overlay.show { display: flex; }
+  .auth-modal {
+    background: var(--paper); border-radius: var(--radius-m); width: 100%; max-width: 400px;
+    padding: 32px 30px 26px; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.35);
+  }
+  .auth-close {
+    position: absolute; top: 14px; right: 16px; background: none; border: none;
+    font-size: 22px; color: var(--ink-soft); cursor: pointer; line-height: 1;
+  }
+  .auth-close:hover { color: var(--ink); }
+  .auth-tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--line); margin-bottom: 22px; }
+  .auth-tab {
+    background: none; border: none; font-family: var(--font-head); font-size: 18px; font-weight: 600;
+    color: var(--ink-soft); padding: 0 0 12px; cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  .auth-tab.active { color: var(--ink); border-bottom-color: var(--brass); }
+  .auth-form .field { margin-bottom: 16px; }
+  .auth-submit { width: 100%; margin-top: 4px; }
+  .auth-note { font-size: 13px; color: var(--ink-soft); margin-top: 16px; text-align: center; }
+  .auth-note a { color: var(--brass); text-decoration: none; font-weight: 600; }
+  .auth-lead { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 18px; }
+  .auth-error { font-size: 13px; color: var(--stamp); margin-bottom: 10px; min-height: 0; }
+  .auth-error:empty { display: none; }
+
+  .requests-modal { max-width: 560px; text-align: left; }
+  .requests-head h3 { font-family: var(--font-head); font-size: 22px; }
+  .requests-head p { font-size: 13.5px; color: var(--ink-soft); margin-top: 6px; margin-bottom: 22px; }
+  .requests-list { max-height: 60vh; overflow-y: auto; }
+  .requests-empty { font-size: 14px; color: var(--ink-soft); padding: 20px 0; text-align: center; }
+  .request-item { border-top: 1px solid var(--line); padding: 16px 0; }
+  .request-item:first-child { border-top: none; }
+  .request-item-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .request-item-cat { font-family: var(--font-head); font-size: 15.5px; font-weight: 600; }
+  .request-item-date { font-size: 12px; color: var(--ink-soft); flex-shrink: 0; }
+  .request-item-meta { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+  .request-item-details { font-size: 13.5px; color: var(--ink); margin-top: 8px; }
+  .request-status {
+    display: inline-block; font-size: 11px; font-family: var(--font-mono); padding: 2px 9px;
+    border-radius: 3px; background: rgba(169,120,42,0.14); color: var(--brass); margin-top: 8px;
+  }
+  .auth-success-msg { font-size: 13px; color: var(--brass); background: rgba(169,120,42,0.12); border-radius: var(--radius-s); padding: 10px 12px; margin-bottom: 10px; }
+  .auth-success-msg:empty { display: none; padding: 0; }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: var(--navy-deep);
+    color: var(--paper);
+    padding: 76px 0 64px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero .wrap { display: grid; grid-template-columns: 1.15fr 1fr; gap: 56px; align-items: center; }
+  @media (max-width: 900px) { .hero .wrap { grid-template-columns: 1fr; gap: 44px; } }
+
+  .hero-eyebrow {
+    font-family: var(--font-head); font-style: italic; font-size: 15px; color: var(--brass-light);
+    margin-bottom: 18px; display: flex; align-items: center; gap: 9px; font-weight: 500;
+  }
+  .hero-eyebrow .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--brass-light); flex-shrink: 0; }
+
+  .hero h1 {
+    font-size: 47px; line-height: 1.09; color: var(--paper);
+    max-width: 12.5ch;
+  }
+  @media (max-width: 640px) { .hero h1 { font-size: 34px; } }
+  .hero h1 em { font-style: italic; color: var(--brass-light); font-weight: 500; }
+
+  .hero p.lead {
+    margin-top: 22px; font-size: 17.5px; color: rgba(236,230,214,0.78);
+    max-width: 46ch;
+  }
+  .hero-actions { margin-top: 32px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--brass); color: var(--navy-deep); font-weight: 600;
+    padding: 13px 24px; border-radius: var(--radius-s); text-decoration: none;
+    font-size: 15px; border: none; cursor: pointer; transition: background .15s ease;
+    font-family: var(--font-body);
+  }
+  .btn-primary:hover { background: var(--brass-light); }
+  .btn-ghost {
+    border: 1px solid var(--line-on-navy); color: var(--paper);
+    padding: 13px 22px; border-radius: var(--radius-s); text-decoration: none;
+    font-size: 15px; background: transparent; cursor: pointer; font-family: var(--font-body);
+  }
+  .btn-ghost:hover { border-color: var(--brass-light); color: var(--brass-light); }
+
+  .hero-search {
+    display: flex; align-items: stretch; margin-top: 30px;
+    background: var(--paper); border-radius: var(--radius-s); overflow: hidden;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+  }
+  .hero-search select {
+    border: none; border-right: 1px solid var(--line); background: var(--paper-2);
+    color: var(--ink); font-family: var(--font-body); font-size: 13.5px;
+    padding: 0 12px; max-width: 168px;
+  }
+  .hero-search input {
+    border: none; flex: 1; padding: 0 14px; font-family: var(--font-body);
+    font-size: 14.5px; color: var(--ink); min-width: 0;
+  }
+  .hero-search input:focus, .hero-search select:focus { outline: none; }
+  .hero-search button {
+    border: none; background: var(--brass); color: var(--navy-deep); font-weight: 600;
+    padding: 0 22px; font-family: var(--font-body); font-size: 14.5px; cursor: pointer;
+    transition: background .15s ease;
+  }
+  .hero-search button:hover { background: var(--brass-light); }
+  @media (max-width: 560px) {
+    .hero-search { flex-wrap: wrap; }
+    .hero-search select { max-width: none; width: 100%; border-right: none; border-bottom: 1px solid var(--line); padding: 10px 12px; }
+    .hero-search input { width: 100%; padding: 12px 14px; }
+    .hero-search button { width: 100%; padding: 12px; }
+  }
+  .hero-search-note { margin-top: 10px; font-size: 12px; color: rgba(236,230,214,0.5); }
+
+  .trust-bar { background: var(--paper-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 22px 0; }
+  .trust-bar .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 18px; }
+  .trust-item { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--ink-soft); }
+  .trust-item svg { width: 20px; height: 20px; color: var(--brass); flex-shrink: 0; }
+  .trust-item strong { color: var(--ink); font-weight: 600; }
+
+  .cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 760px) { .cat-grid { grid-template-columns: repeat(2, 1fr); } }
+  .cat-tile {
+    display: block; text-decoration: none; color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--radius-m);
+    padding: 22px 20px; background: var(--paper); transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+  }
+  .cat-tile:hover { border-color: var(--brass); transform: translateY(-3px); box-shadow: 0 10px 22px rgba(22,50,79,0.12); }
+  .cat-tile .ct-icon { width: 26px; height: 26px; color: var(--brass); }
+  .cat-tile .ct-name { font-size: 14.5px; font-weight: 600; margin-top: 14px; }
+  .cat-tile .ct-count { font-size: 12px; color: var(--ink-soft); margin-top: 3px; }
+
+  /* ---------- Global reach map ---------- */
+  .reach-map {
+    background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-m);
+    padding: 8px; overflow: hidden;
+  }
+  .reach-map svg { width: 100%; height: auto; display: block; }
+  .reach-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  .reach-legend span {
+    font-size: 12.5px; color: var(--ink-soft); border: 1px solid var(--line);
+    border-radius: 20px; padding: 6px 14px; display: inline-flex; align-items: center; gap: 7px;
+  }
+  .reach-legend span::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--brass); display: inline-block; }
+
+  @keyframes heroRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes manifestRise { from { opacity: 0; transform: translateY(16px) rotate(1.2deg); } to { opacity: 1; transform: translateY(0) rotate(1.2deg); } }
+  .hero-eyebrow, .hero h1, .hero p.lead, .hero-search, .hero-search-note, .hero-actions, .hero-figures {
+    animation: heroRise 0.7s cubic-bezier(.2,.7,.3,1) both;
+  }
+  .hero-eyebrow { animation-delay: .02s; }
+  .hero h1 { animation-delay: .08s; }
+  .hero p.lead { animation-delay: .16s; }
+  .hero-search { animation-delay: .24s; }
+  .hero-search-note { animation-delay: .3s; }
+  .hero-actions { animation-delay: .34s; }
+  .hero-figures { animation-delay: .4s; }
+  .hero .manifest { animation: manifestRise 0.8s cubic-bezier(.2,.7,.3,1) .3s both; }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-eyebrow, .hero h1, .hero p.lead, .hero-search, .hero-search-note, .hero-actions, .hero-figures, .hero .manifest { animation: none; }
+  }
+
+  .hero-figures { display: flex; gap: 30px; margin-top: 44px; }
+  .hero-figures div { border-top: 1px solid var(--line-on-navy); padding-top: 10px; }
+  .hero-figures .num { font-family: var(--font-head); font-size: 24px; color: var(--brass-light); }
+  .hero-figures .lbl { font-size: 12.5px; color: rgba(236,230,214,0.62); margin-top: 2px; }
+
+  /* Manifest card */
+  .manifest {
+    background: var(--paper); color: var(--ink);
+    border-radius: var(--radius-m);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.28);
+    padding: 26px 26px 22px;
+    position: relative;
+    transform: rotate(1.2deg);
+  }
+  .manifest::before {
+    content: "";
+    position: absolute; top: -10px; right: 22px;
+    width: 92px; height: 92px;
+    border: 2px solid var(--stamp);
+    border-radius: 50%;
+    transform: rotate(-14deg);
+    opacity: 0.85;
+  }
+  .manifest-stamp {
+    position: absolute; top: 4px; right: 40px;
+    width: 68px; height: 68px; border-radius: 50%;
+    border: 1.5px solid var(--stamp);
+    transform: rotate(-14deg);
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; color: var(--stamp);
+    font-family: var(--font-mono); font-size: 8.5px; font-weight: 500;
+    letter-spacing: 0.04em; line-height: 1.3; opacity: 0.9;
+  }
+  .manifest-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    border-bottom: 1px dashed var(--line); padding-bottom: 14px; margin-bottom: 14px;
+  }
+  .manifest-head .title { font-family: var(--font-head); font-size: 16.5px; font-weight: 600; }
+  .manifest-head .sub { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-soft); margin-top: 4px; }
+  .manifest-row {
+    display: flex; justify-content: space-between; padding: 9px 0;
+    border-bottom: 1px solid var(--line); font-size: 13.5px;
+  }
+  .manifest-row:last-of-type { border-bottom: none; }
+  .manifest-row .k { color: var(--ink-soft); }
+  .manifest-row .v { font-family: var(--font-mono); font-size: 12.5px; text-align: right; }
+  .status-chip {
+    display: inline-block; background: rgba(169,120,42,0.16); color: var(--brass);
+    font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border-radius: 3px;
+  }
+
+  /* ---------- Section shell ---------- */
+  section { padding: 84px 0; }
+  @media (max-width: 640px) { section { padding: 56px 0; } }
+  .section-head { display: grid; grid-template-columns: 1fr 1.4fr; gap: 40px; margin-bottom: 48px; align-items: end; }
+  @media (max-width: 760px) { .section-head { grid-template-columns: 1fr; gap: 16px; } }
+  .kicker { font-family: var(--font-head); font-style: italic; font-size: 15px; color: var(--brass); font-weight: 500; }
+  .why .kicker { color: var(--brass-light); }
+  .section-head h2 { font-size: 34px; margin-top: 12px; line-height: 1.15; }
+  .section-head p { color: var(--ink-soft); font-size: 15.5px; max-width: 50ch; }
+
+  /* ---------- How it works (process ledger) ---------- */
+  .process { border-top: 1px solid var(--line); }
+  .step {
+    display: grid; grid-template-columns: 64px 1fr 1.3fr; gap: 28px;
+    padding: 26px 4px; border-bottom: 1px solid var(--line); align-items: start;
+    transition: background .15s ease;
+  }
+  .step:hover { background: rgba(169,120,42,0.05); }
+  @media (max-width: 760px) { .step { grid-template-columns: 40px 1fr; } .step .step-copy { grid-column: 2 / 3; } }
+  .step .step-num {
+    font-family: var(--font-head); font-size: 26px; color: var(--brass);
+    font-style: italic; font-weight: 500;
+  }
+  .step .step-title { font-family: var(--font-head); font-size: 19px; font-weight: 600; padding-top: 2px; }
+  .step .step-copy { color: var(--ink-soft); font-size: 14.5px; padding-top: 2px; }
+  .step .step-copy .tag { font-family: var(--font-mono); font-size: 11.5px; color: var(--brass); display: block; margin-top: 8px; }
+
+  /* ---------- Services (ledger table, not cards) ---------- */
+  .services { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+  @media (max-width: 760px) { .services { grid-template-columns: 1fr; } }
+  .service-item {
+    border-right: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    padding: 30px 28px; background: var(--paper); transition: background .15s ease;
+  }
+  .service-item:hover { background: rgba(169,120,42,0.05); }
+  .service-item .si-icon { width: 24px; height: 24px; color: var(--brass); }
+  .service-item h3 { font-size: 19px; margin-top: 14px; }
+  .service-item p { color: var(--ink-soft); font-size: 14.5px; margin-top: 8px; }
+
+  /* ---------- Why / trust ---------- */
+  .why { background: var(--navy-deep); color: var(--paper); }
+  .why .section-head p { color: rgba(236,230,214,0.7); }
+  .why-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line-on-navy); border: 1px solid var(--line-on-navy); }
+  @media (max-width: 760px) { .why-grid { grid-template-columns: 1fr; } }
+  .why-item { background: var(--navy-deep); padding: 30px 26px; }
+  .why-item .wi-icon { width: 24px; height: 24px; color: var(--brass-light); }
+  .why-item h3 { color: var(--paper); font-size: 18px; margin-top: 14px; }
+  .why-item p { color: rgba(236,230,214,0.66); font-size: 14px; margin-top: 8px; }
+
+  /* ---------- Testimonials ---------- */
+  .quotes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  @media (max-width: 900px) { .quotes { grid-template-columns: 1fr; } }
+  .quote-card { border-top: 2px solid var(--brass); padding-top: 18px; }
+  .quote-card .stars { color: var(--brass); font-size: 13px; letter-spacing: 2px; margin-bottom: 12px; }
+  .quote-card p.q { font-family: var(--font-head); font-style: italic; font-size: 17px; line-height: 1.4; color: var(--ink); }
+  .quote-card .who { margin-top: 16px; display: flex; align-items: center; gap: 10px; }
+  .quote-card .avatar {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--navy-deep); color: var(--brass-light);
+    display: flex; align-items: center; justify-content: center; font-family: var(--font-head);
+    font-style: italic; font-size: 14px; flex-shrink: 0;
+  }
+  .quote-card .who-text { font-size: 13px; color: var(--ink-soft); }
+  .quote-card .who-text .name { color: var(--ink); font-weight: 600; display: block; }
+
+  /* ---------- Contact / quote form ---------- */
+  .contact { background: var(--paper-2); }
+  .contact-grid { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 56px; }
+  @media (max-width: 860px) { .contact-grid { grid-template-columns: 1fr; gap: 36px; } }
+  .contact-info h2 { font-size: 30px; line-height: 1.16; }
+  .contact-info p { color: var(--ink-soft); margin-top: 16px; font-size: 15px; max-width: 40ch; }
+  .contact-detail { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 18px; }
+  .contact-detail .k { font-family: var(--font-head); font-style: italic; font-size: 13.5px; color: var(--brass); }
+  .contact-detail .v { font-size: 15px; margin-top: 4px; }
+
+  form.quote-form { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-m); padding: 30px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 520px) { .field-row { grid-template-columns: 1fr; } }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; font-size: 13px; color: var(--ink-soft); margin-bottom: 6px; }
+  .field input, .field select, .field textarea {
+    width: 100%; border: 1px solid var(--line); background: var(--paper);
+    border-radius: var(--radius-s); padding: 10px 12px; font-family: var(--font-body);
+    font-size: 14.5px; color: var(--ink);
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: 2px solid var(--brass); outline-offset: 1px; border-color: var(--brass);
+  }
+  .field textarea { resize: vertical; min-height: 84px; }
+  .submit-row { display: flex; align-items: center; gap: 16px; margin-top: 6px; }
+  .form-note { font-size: 12.5px; color: var(--ink-soft); }
+  .form-success { display: none; background: rgba(169,120,42,0.14); border: 1px solid var(--brass); border-radius: var(--radius-s); padding: 14px 16px; font-size: 14px; margin-top: 16px; }
+  .form-success.show { display: block; }
+
+  /* ---------- Footer ---------- */
+  footer { background: var(--navy-deep); color: rgba(236,230,214,0.62); padding: 44px 0 28px; }
+  .footer-top { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 24px; padding-bottom: 28px; border-bottom: 1px solid var(--line-on-navy); }
+  .footer-brand { font-family: var(--font-head); font-size: 19px; color: var(--paper); display: flex; align-items: center; gap: 9px; }
+  .footer-brand .logo-mark { width: 26px; height: 26px; flex-shrink: 0; }
+  .footer-links { display: flex; gap: 26px; flex-wrap: wrap; }
+  .footer-links a { text-decoration: none; color: rgba(236,230,214,0.62); font-size: 13.5px; }
+  .footer-links a:hover { color: var(--paper); }
+  .footer-bottom { display: flex; justify-content: space-between; padding-top: 22px; font-size: 12.5px; flex-wrap: wrap; gap: 10px; }
+
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--brass); outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <div class="brand">
+      <svg class="logo-mark" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="22" cy="22" r="19" fill="none" stroke="#C99A46" stroke-width="1.5"/>
+        <circle cx="22" cy="22" r="14" fill="none" stroke="#C99A46" stroke-width="0.75" opacity="0.5"/>
+        <path d="M22 2.5v4.5M22 37v4.5M2.5 22h4.5M37 22h4.5" stroke="#C99A46" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+        <text x="22" y="29.5" text-anchor="middle" font-family="Fraunces, serif" font-style="italic" font-weight="600" font-size="18" fill="#C99A46">K</text>
+      </svg>
+      Keista Mall
+    </div>
+    <nav class="nav-links">
+      <a href="#reach">Global reach</a>
+      <a href="#categories">Categories</a>
+      <a href="#how">How it works</a>
+      <a href="#services">Services</a>
+      <a href="#why">Why us</a>
+      <a href="#contact">Get a quote</a>
+    </nav>
+    <div class="nav-auth" id="navAuthLoggedOut">
+      <a href="#" id="openLogin" class="nav-link-auth">Log in</a>
+      <a href="#" id="openSignup" class="nav-cta">Sign up</a>
+    </div>
+    <div class="nav-auth" id="navAuthLoggedIn" style="display:none;">
+      <a href="#" id="openRequests" class="nav-link-auth">My requests</a>
+      <span class="nav-user" id="navUserName"></span>
+      <a href="#" id="logoutLink" class="nav-link-auth">Log out</a>
+    </div>
+    <a href="#contact" class="nav-cta nav-cta-quote">Request a quote</a>
+  </div>
+</header>
+
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-modal">
+    <button class="auth-close" id="authClose" aria-label="Close">&times;</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="signup" id="tabSignup">Sign up</button>
+      <button class="auth-tab" data-tab="login" id="tabLogin">Log in</button>
+    </div>
+
+    <form class="auth-form" id="signupForm">
+      <div class="field">
+        <label for="suName">Full name</label>
+        <input id="suName" type="text" required>
+      </div>
+      <div class="field">
+        <label for="suEmail">Email address</label>
+        <input id="suEmail" type="email" required>
+      </div>
+      <div class="field">
+        <label for="suPassword">Password</label>
+        <input id="suPassword" type="password" minlength="6" required>
+      </div>
+      <div class="auth-error" id="signupError"></div>
+      <div class="auth-success-msg" id="signupSuccess"></div>
+      <button type="submit" class="btn-primary auth-submit">Create account</button>
+      <p class="auth-note">Already have an account? <a href="#" id="goToLogin">Log in</a></p>
+    </form>
+
+    <form class="auth-form" id="loginForm" style="display:none;">
+      <div class="field">
+        <label for="liEmail">Email address</label>
+        <input id="liEmail" type="email" required>
+      </div>
+      <div class="field">
+        <label for="liPassword">Password</label>
+        <input id="liPassword" type="password" required>
+      </div>
+      <div class="auth-error" id="loginError"></div>
+      <button type="submit" class="btn-primary auth-submit">Log in</button>
+      <p class="auth-note">
+        New to Keista Mall? <a href="#" id="goToSignup">Sign up</a>
+        &nbsp;·&nbsp;
+        <a href="#" id="goToForgot">Forgot password?</a>
+      </p>
+    </form>
+
+    <form class="auth-form" id="forgotForm" style="display:none;">
+      <p class="auth-lead">Enter the email on your account and we'll send a link to reset your password.</p>
+      <div class="field">
+        <label for="fpEmail">Email address</label>
+        <input id="fpEmail" type="email" required>
+      </div>
+      <div class="auth-error" id="forgotError"></div>
+      <div class="auth-success-msg" id="forgotSuccess"></div>
+      <button type="submit" class="btn-primary auth-submit">Send reset link</button>
+      <p class="auth-note"><a href="#" id="backToLogin">Back to log in</a></p>
+    </form>
+
+    <form class="auth-form" id="resetForm" style="display:none;">
+      <p class="auth-lead">Choose a new password for your account.</p>
+      <div class="field">
+        <label for="rpPassword">New password</label>
+        <input id="rpPassword" type="password" minlength="6" required>
+      </div>
+      <div class="auth-error" id="resetError"></div>
+      <div class="auth-success-msg" id="resetSuccess"></div>
+      <button type="submit" class="btn-primary auth-submit">Update password</button>
+    </form>
+  </div>
+</div>
+
+<div class="auth-overlay" id="requestsOverlay">
+  <div class="auth-modal requests-modal">
+    <button class="auth-close" id="requestsClose" aria-label="Close">&times;</button>
+    <div class="requests-head">
+      <h3>My requests</h3>
+      <p>Every quote request you've submitted, and where it stands.</p>
+    </div>
+    <div id="requestsList" class="requests-list">
+      <div class="requests-empty" id="requestsLoading">Loading&hellip;</div>
+    </div>
+  </div>
+</div>
+
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <div class="hero-eyebrow"><span class="dot"></span> Sourcing agents in 35+ countries</div>
+      <h1>Your agent on the ground <em>between</em> your business and the world's suppliers.</h1>
+      <p class="lead">Keista Mall finds the supplier, whether that's in China, Vietnam, India, Turkey, or anywhere else that makes it, negotiates the price, inspects the goods before they leave the warehouse, and gets your container to your door. You never have to wire money to a supplier you've never seen.</p>
+
+      <form class="hero-search" id="heroSearch">
+        <select id="searchCategory" aria-label="Category">
+          <option value="">All categories</option>
+          <option>Electronics &amp; accessories</option>
+          <option>Fashion &amp; apparel</option>
+          <option>Home &amp; furniture</option>
+          <option>Beauty &amp; personal care</option>
+          <option>Toys &amp; baby products</option>
+          <option>Industrial &amp; machinery</option>
+          <option>Automotive parts</option>
+          <option>Sports &amp; outdoor</option>
+        </select>
+        <input type="text" id="searchQuery" placeholder="What are you trying to import? e.g. &quot;stainless steel water bottles&quot;" aria-label="Product search">
+        <button type="submit">Find suppliers</button>
+      </form>
+      <div class="hero-search-note">Search connects you with an agent, not a checkout. Every match is reviewed before you pay anyone.</div>
+
+      <div class="hero-actions">
+        <a href="#contact" class="btn-primary">Request a sourcing quote</a>
+        <a href="#how" class="btn-ghost">See how an order moves</a>
+      </div>
+      <div class="hero-figures">
+        <div><div class="num">35+</div><div class="lbl">countries sourced from</div></div>
+        <div><div class="num">1,200+</div><div class="lbl">suppliers vetted</div></div>
+        <div><div class="num">6</div><div class="lbl">inspection checkpoints per order</div></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="manifest">
+        <div class="manifest-stamp">QUALITY<br>PASSED</div>
+        <div class="manifest-head">
+          <div>
+            <div class="title">Shipment Manifest</div>
+            <div class="sub mono">Ref. KM-2026-04417</div>
+          </div>
+        </div>
+        <div class="manifest-row"><span class="k">Origin</span><span class="v">Ho Chi Minh City, VN</span></div>
+        <div class="manifest-row"><span class="k">Destination</span><span class="v">Lagos, NG</span></div>
+        <div class="manifest-row"><span class="k">Goods</span><span class="v">Homeware: 640 units</span></div>
+        <div class="manifest-row"><span class="k">Incoterm</span><span class="v">FOB Ho Chi Minh</span></div>
+        <div class="manifest-row"><span class="k">Inspection</span><span class="v"><span class="status-chip">Passed · 98.4%</span></span></div>
+        <div class="manifest-row"><span class="k">Status</span><span class="v"><span class="status-chip">In transit</span></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="trust-bar">
+  <div class="wrap">
+    <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg> <span><strong>Verified suppliers</strong> only</span></div>
+    <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg> <span><strong>Buyer protection</strong> on every order</span></div>
+    <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> <span><strong>Escrow</strong> payments, released on inspection</span></div>
+    <div class="trust-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M20 19v1a3 3 0 0 1-3 3h-3"/></svg> <span><strong>24/7</strong> agent support</span></div>
+  </div>
+</div>
+
+<section id="reach">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Global reach</div>
+        <h2>Sourcing without borders.</h2>
+      </div>
+      <p>The same vetted network and escrow protection follow your order no matter which of our sourcing hubs it starts from.</p>
+    </div>
+
+    <div class="reach-map">
+      <svg viewBox="0 0 1000 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Map of sourcing hubs connecting to your warehouse">
+        <defs>
+          <pattern id="dotgrid" width="26" height="26" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="1.1" fill="#C7BFA8" opacity="0.55"/>
+          </pattern>
+        </defs>
+        <rect width="1000" height="360" fill="url(#dotgrid)"/>
+
+        <path d="M120,290 Q500,70 930,180" fill="none" stroke="#A9782A" stroke-width="1.4" stroke-dasharray="3 6" opacity="0.55"/>
+        <path d="M430,90 Q660,30 930,180" fill="none" stroke="#A9782A" stroke-width="1.4" stroke-dasharray="3 6" opacity="0.55"/>
+        <path d="M560,205 Q740,120 930,180" fill="none" stroke="#A9782A" stroke-width="1.4" stroke-dasharray="3 6" opacity="0.55"/>
+        <path d="M760,140 Q860,115 930,180" fill="none" stroke="#A9782A" stroke-width="1.4" stroke-dasharray="3 6" opacity="0.55"/>
+        <path d="M700,230 Q830,245 930,180" fill="none" stroke="#A9782A" stroke-width="1.4" stroke-dasharray="3 6" opacity="0.55"/>
+
+        <circle cx="120" cy="290" r="5.5" fill="#A9782A"/>
+        <text x="132" y="294" font-family="Fraunces, serif" font-style="italic" font-size="15" fill="#45566A">São Paulo</text>
+
+        <circle cx="430" cy="90" r="5.5" fill="#A9782A"/>
+        <text x="442" y="94" font-family="Fraunces, serif" font-style="italic" font-size="15" fill="#45566A">Istanbul</text>
+
+        <circle cx="560" cy="205" r="5.5" fill="#A9782A"/>
+        <text x="572" y="209" font-family="Fraunces, serif" font-style="italic" font-size="15" fill="#45566A">Mumbai</text>
+
+        <circle cx="760" cy="140" r="5.5" fill="#A9782A"/>
+        <text x="772" y="144" font-family="Fraunces, serif" font-style="italic" font-size="15" fill="#45566A">Shenzhen</text>
+
+        <circle cx="700" cy="230" r="5.5" fill="#A9782A"/>
+        <text x="586" y="248" font-family="Fraunces, serif" font-style="italic" font-size="15" fill="#45566A">Ho Chi Minh City</text>
+
+        <circle cx="930" cy="180" r="9" fill="#0F2236" stroke="#A9782A" stroke-width="2"/>
+        <text x="855" y="160" font-family="IBM Plex Sans, sans-serif" font-weight="600" font-size="14" fill="#1C2B39">Your warehouse</text>
+      </svg>
+    </div>
+
+    <div class="reach-legend">
+      <span>Shenzhen: electronics &amp; hardware</span>
+      <span>Ho Chi Minh City: apparel &amp; footwear</span>
+      <span>Mumbai: textiles &amp; home goods</span>
+      <span>Istanbul: furniture &amp; leather goods</span>
+      <span>São Paulo: agri &amp; industrial parts</span>
+    </div>
+  </div>
+</section>
+
+<section id="categories">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Browse by category</div>
+        <h2>Sourced from wherever it's made best.</h2>
+      </div>
+      <p>Each category runs through the same vetted-supplier network, whether the best price this quarter is in Shenzhen, Ho Chi Minh City, or Istanbul.</p>
+    </div>
+
+    <div class="cat-grid">
+      <a href="#contact" class="cat-tile" data-cat="Electronics &amp; accessories">
+        <svg class="ct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="10" height="10" rx="1"/><path d="M9 3v3M12 3v3M15 3v3M9 18v3M12 18v3M15 18v3M3 9h3M3 12h3M3 15h3M18 9h3M18 12h3M18 15h3"/></svg>
+        <div class="ct-name">Electronics &amp; accessories</div>
+        <div class="ct-count">6 sourcing hubs</div>
+      </a>
+      <a href="#contact" class="cat-tile" data-cat="Fashion &amp; apparel">
+        <svg class="ct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.6V7"/><circle cx="12" cy="4" r="1.3"/><path d="M12 7 3 13.5a1.5 1.5 0 0 0 .9 2.7h16.2a1.5 1.5 0 0 0 .9-2.7L12 7Z"/><path d="M5 20h14"/></svg>
+        <div class="ct-name">Fashion &amp; apparel</div>
+        <div class="ct-count">9 sourcing hubs</div>
+      </a>
+      <a href="#contact" class="cat-tile" data-cat="Home &amp; furniture">
+        <svg class="ct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></svg>
+        <div class="ct-name">Home &amp; furniture</div>
+        <div class="ct-count">5 sourcing hubs</div>
+      </a>
+      <a href="#contact" class="cat-tile" data-cat="Beauty &amp; personal care">
+        <svg class="ct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c4 5 6 8.2 6 11a6 6 0 1 1-12 0c0-2.8 2-6 6-11Z"/></svg>
+        <div class="ct-name">Beauty &amp; personal care</div>
+        <div class="ct-count">4 sourcing hubs</div>
+      </a>
+      <a href="#contact" class="cat-tile" data-cat="Toys &amp; baby products">
+        <svg class="ct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="6" height="6" rx="1"/><rect x="14" y="10" width="6" height="6" rx="1"/><rect x="9" y="4" width="6" height="6" rx="1"/></svg>
+        <div class="ct-name">Toys &amp; baby products</div>
+        <div class="ct-count">3 sourcing hubs</div>
+      </a>
+      <a href="#contact" class="cat-tile" data-cat="Industrial &amp; machinery">
+        <svg class="ct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7M18.4 18.4l-1.7-1.7M7.3 7.3 5.6 5.6"/></svg>
+        <div class="ct-name">Industrial &amp; machinery</div>
+        <div class="ct-count">7 sourcing hubs</div>
+      </a>
+      <a href="#contact" class="cat-tile" data-cat="Automotive parts">
+        <svg class="ct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.2"/><path d="M12 4v3.6M12 16.4V20M4 12h3.6M16.4 12H20M6.3 6.3l2.5 2.5M15.2 15.2l2.5 2.5M17.7 6.3l-2.5 2.5M8.8 15.2l-2.5 2.5"/></svg>
+        <div class="ct-name">Automotive parts</div>
+        <div class="ct-count">4 sourcing hubs</div>
+      </a>
+      <a href="#contact" class="cat-tile" data-cat="Sports &amp; outdoor">
+        <svg class="ct-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 4c3 2.5 3 13.5 0 16M4 12c2.5-3 13.5-3 16 0"/></svg>
+        <div class="ct-name">Sports &amp; outdoor</div>
+        <div class="ct-count">5 sourcing hubs</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="kicker">How an order moves</div>
+        <h2>From your idea to your inventory.</h2>
+      </div>
+      <p>Every order runs through the same six checkpoints, whether it's a single sample or a full container load. You approve each stage before we move to the next.</p>
+    </div>
+
+    <div class="process">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-title">Brief &amp; sourcing</div>
+        <div class="step-copy">Tell us what you need: a product photo, a spec sheet, or just a description. We shortlist three to five suppliers across our network that can actually make it, not just list it.<span class="tag">Turnaround: 2–4 business days</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-title">Quotes &amp; negotiation</div>
+        <div class="step-copy">Your dedicated agent handles negotiation with the supplier on your behalf: price, MOQ, and lead time, all worked out in the supplier's own language, with a single comparison sheet handed back to you.<span class="tag">You approve the supplier, we don't pick for you</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-title">Sample &amp; sign-off</div>
+        <div class="step-copy">A physical sample ships to you before any bulk order is placed. Nothing goes into production until you've held it in your hands.<span class="tag">Sample cost credited back on bulk order</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-title">Production &amp; escrow</div>
+        <div class="step-copy">Your payment sits in escrow with Keista Mall, not the factory, and is only released once goods pass inspection, so there's no factory to chase if something's wrong.<span class="tag">Deposit + balance held on your terms</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-title">Inspection &amp; consolidation</div>
+        <div class="step-copy">Our inspectors check the goods against your spec sheet at the factory, then consolidate with any other orders you have running to split the freight cost.<span class="tag">Photo &amp; video report included</span></div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-title">Shipping &amp; customs</div>
+        <div class="step-copy">We handle export documentation, freight booking, and customs clearance on your end, and hand you a tracking number the moment the container leaves port.<span class="tag">Sea, air, or express: your call</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="services">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="kicker">What we handle</div>
+        <h2>Everything between finding the right supplier and it sitting in your warehouse.</h2>
+      </div>
+      <p>Use one service or all six. Most clients start with sourcing and add inspection and logistics once the first order lands.</p>
+    </div>
+
+    <div class="services">
+      <div class="service-item">
+        <svg class="si-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.3-4.3"/></svg>
+        <h3>Supplier sourcing &amp; vetting</h3>
+        <p>We visit factories and workshops, check business licences, and confirm production capacity before a supplier ever reaches your shortlist, wherever in the world they're based.</p>
+      </div>
+      <div class="service-item">
+        <svg class="si-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 3.4 20 10.8a2 2 0 0 1 0 2.8l-6.4 6.4a2 2 0 0 1-2.8 0L3.4 12.6V4a.6.6 0 0 1 .6-.6h8.6Z"/><circle cx="8" cy="8" r="1.3"/></svg>
+        <h3>Price &amp; MOQ negotiation</h3>
+        <p>Local presence means fewer "foreigner prices." We negotiate in the supplier's own language and push for MOQs that fit a first-time order.</p>
+      </div>
+      <div class="service-item">
+        <svg class="si-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/><path d="M9 12l2 2 4-4"/></svg>
+        <h3>Quality control &amp; inspection</h3>
+        <p>Pre-production, in-line, and pre-shipment checks against your spec sheet, with a photo and video report for every batch.</p>
+      </div>
+      <div class="service-item">
+        <svg class="si-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <h3>Escrow &amp; payment protection</h3>
+        <p>Your funds are released to the factory only after goods pass inspection, so you're never wiring a deposit on trust alone.</p>
+      </div>
+      <div class="service-item">
+        <svg class="si-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16h11V7H3v9Z"/><path d="M14 10h3l3 3v3h-6v-6Z"/><circle cx="7" cy="19" r="1.6"/><circle cx="17.5" cy="19" r="1.6"/></svg>
+        <h3>Freight, customs &amp; delivery</h3>
+        <p>Sea or air freight, consolidation with other clients' cargo, export paperwork, and customs clearance handled at your destination port.</p>
+      </div>
+      <div class="service-item">
+        <svg class="si-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.5 11.5 3H19a2 2 0 0 1 2 2v7.5L12.5 21 3 11.5Z"/><circle cx="14" cy="8" r="1.3"/></svg>
+        <h3>Private label &amp; packaging</h3>
+        <p>Custom packaging, logo printing, and barcode/labelling setup, arranged directly with the factory during production.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="why" class="why">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Why work through an agent</div>
+        <h2>The risk isn't finding a supplier. It's what happens after you pay one.</h2>
+      </div>
+      <p>Most import problems trace back to one thing: paying a factory directly, with no one on the ground to hold them accountable.</p>
+    </div>
+
+    <div class="why-grid">
+      <div class="why-item">
+        <svg class="wi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7-7.2 7-12a7 7 0 1 0-14 0c0 4.8 7 12 7 12Z"/><circle cx="12" cy="9" r="2.4"/></svg>
+        <h3>We're based where your goods are made</h3>
+        <p>Our team is on the ground across Asia, Europe, and the Americas. We can visit a factory floor the same week an issue comes up, not schedule a video call three weeks out.</p>
+      </div>
+      <div class="why-item">
+        <svg class="wi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <h3>You never pay a factory directly</h3>
+        <p>All payments route through Keista Mall's escrow. If goods fail inspection, your money doesn't leave escrow. Full stop.</p>
+      </div>
+      <div class="why-item">
+        <svg class="wi-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/><path d="M20 19v1a3 3 0 0 1-3 3h-3"/></svg>
+        <h3>One point of contact, start to finish</h3>
+        <p>The same agent handles your sourcing, sampling, production, and shipping, so your order never gets passed between departments or lost in a handoff.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="testimonials">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Clients shipping with us</div>
+        <h2>What it's like on the other end of the container.</h2>
+      </div>
+    </div>
+    <div class="quotes">
+      <div class="quote-card">
+        <div class="stars">★★★★★</div>
+        <p class="q">The escrow setup is what convinced me. I'd been burned once before paying a supplier direct. This time the money only moved after my inspector signed off.</p>
+        <div class="who">
+          <div class="avatar">AO</div>
+          <div class="who-text"><span class="name">Adaeze O.</span>Homeware importer, Lagos</div>
+        </div>
+      </div>
+      <div class="quote-card">
+        <div class="stars">★★★★★</div>
+        <p class="q">They caught a packaging defect at the factory before it shipped. That alone paid for the inspection fee ten times over.</p>
+        <div class="who">
+          <div class="avatar">MT</div>
+          <div class="who-text"><span class="name">Marcus T.</span>Electronics accessories, Houston</div>
+        </div>
+      </div>
+      <div class="quote-card">
+        <div class="stars">★★★★★</div>
+        <p class="q">First order was a single sample box. Eight months later we're running a full container every quarter with the same agent handling it.</p>
+        <div class="who">
+          <div class="avatar">PN</div>
+          <div class="who-text"><span class="name">Priya N.</span>Fashion accessories, London</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="contact">
+  <div class="wrap contact-grid">
+    <div class="contact-info">
+      <div class="kicker">Start a shipment</div>
+      <h2>Tell us what you're trying to import.</h2>
+      <p>Share what you're looking for and roughly how much you'd order. We'll come back with a supplier shortlist and a landed-cost estimate, no obligation to proceed.</p>
+
+      <div class="contact-detail">
+        <div class="k">Response time</div>
+        <div class="v">Within 1 business day</div>
+      </div>
+      <div class="contact-detail">
+        <div class="k">Offices</div>
+        <div class="v">Shenzhen · Ho Chi Minh City · Istanbul · Mumbai</div>
+      </div>
+      <div class="contact-detail">
+        <div class="k">Email</div>
+        <div class="v">sourcing@keistamall.com</div>
+      </div>
+    </div>
+
+    <div>
+      <form class="quote-form" id="quoteForm">
+        <div class="field-row">
+          <div class="field">
+            <label for="name">Full name</label>
+            <input id="name" name="name" type="text" required>
+          </div>
+          <div class="field">
+            <label for="email">Email address</label>
+            <input id="email" name="email" type="email" required>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="company">Company (optional)</label>
+            <input id="company" name="company" type="text">
+          </div>
+          <div class="field">
+            <label for="category">Product category</label>
+            <select id="category" name="category">
+              <option>Homeware &amp; furniture</option>
+              <option>Electronics &amp; accessories</option>
+              <option>Fashion &amp; textiles</option>
+              <option>Beauty &amp; personal care</option>
+              <option>Toys &amp; baby products</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="volume">Estimated order volume</label>
+            <select id="volume" name="volume">
+              <option>Sample only, for now</option>
+              <option>Under 500 units</option>
+              <option>500 – 2,000 units</option>
+              <option>Full container (2,000+ units)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="destination">Delivery country</label>
+            <input id="destination" name="destination" type="text" placeholder="e.g. Nigeria">
+          </div>
+        </div>
+        <div class="field">
+          <label for="details">What are you looking to import?</label>
+          <textarea id="details" name="details" placeholder="Product, quantity, target price, or a link to a listing you found"></textarea>
+        </div>
+        <div class="submit-row">
+          <button type="submit" class="btn-primary" style="background: var(--brass); color: var(--navy-deep);">Send request</button>
+          <span class="form-note">No payment required to get a quote.</span>
+        </div>
+        <div class="form-success" id="formSuccess">Request received. An agent will reply within one business day at the email you provided.</div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <svg class="logo-mark" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="22" cy="22" r="19" fill="none" stroke="#C99A46" stroke-width="1.5"/>
+          <circle cx="22" cy="22" r="14" fill="none" stroke="#C99A46" stroke-width="0.75" opacity="0.5"/>
+          <path d="M22 2.5v4.5M22 37v4.5M2.5 22h4.5M37 22h4.5" stroke="#C99A46" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+          <text x="22" y="29.5" text-anchor="middle" font-family="Fraunces, serif" font-style="italic" font-weight="600" font-size="18" fill="#C99A46">K</text>
+        </svg>
+        Keista Mall
+      </div>
+      <div class="footer-links">
+        <a href="#how">How it works</a>
+        <a href="#services">Services</a>
+        <a href="#why">Why us</a>
+        <a href="#testimonials">Clients</a>
+        <a href="#contact">Get a quote</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Keista Mall. Sourcing, inspection &amp; logistics between global suppliers and the world.</span>
+      <span class="mono">35+ countries</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('quoteForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var form = e.target;
+    var submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    var session = (await supabaseClient.auth.getSession()).data.session;
+    var payload = {
+      full_name: document.getElementById('name').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      company: document.getElementById('company').value.trim() || null,
+      category: document.getElementById('category').value,
+      volume: document.getElementById('volume').value,
+      destination: document.getElementById('destination').value.trim() || null,
+      details: document.getElementById('details').value.trim() || null,
+      user_id: session ? session.user.id : null
+    };
+
+    var result = await supabaseClient.from('quote_requests').insert(payload);
+    submitBtn.disabled = false;
+
+    if (result.error) {
+      alert('Something went wrong sending your request: ' + result.error.message);
+      return;
+    }
+    document.getElementById('formSuccess').classList.add('show');
+    form.reset();
+  });
+
+  function setFormCategory(catLabel) {
+    var select = document.getElementById('category');
+    if (!select) return;
+    for (var i = 0; i < select.options.length; i++) {
+      if (select.options[i].text === catLabel) { select.selectedIndex = i; break; }
+    }
+  }
+
+  document.getElementById('heroSearch').addEventListener('submit', function(e){
+    e.preventDefault();
+    var cat = document.getElementById('searchCategory').value;
+    var q = document.getElementById('searchQuery').value;
+    if (cat) setFormCategory(cat);
+    var details = document.getElementById('details');
+    if (details && q) details.value = q;
+    document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
+  });
+
+  document.querySelectorAll('.cat-tile').forEach(function(tile){
+    tile.addEventListener('click', function(e){
+      e.preventDefault();
+      setFormCategory(tile.getAttribute('data-cat').replace(/&amp;/g, '&'));
+      document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+
+  /* ---------- Auth (Supabase) ---------- */
+  var SUPABASE_URL = 'https://ebovdmanbajozqebcvoc.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVib3ZkbWFuYmFqb3pxZWJjdm9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDA3MDMsImV4cCI6MjEwNTY3NjcwM30.Cg_H69k4ImXchiuTo_WSA5TN_fVatQfiU--fUEagrXg';
+  var supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  var authOverlay = document.getElementById('authOverlay');
+  var signupForm = document.getElementById('signupForm');
+  var loginForm = document.getElementById('loginForm');
+  var forgotForm = document.getElementById('forgotForm');
+  var resetForm = document.getElementById('resetForm');
+  var tabSignup = document.getElementById('tabSignup');
+  var tabLogin = document.getElementById('tabLogin');
+  var authTabsEl = document.querySelector('.auth-tabs');
+  var signupError = document.getElementById('signupError');
+  var signupSuccess = document.getElementById('signupSuccess');
+  var loginError = document.getElementById('loginError');
+  var forgotError = document.getElementById('forgotError');
+  var forgotSuccess = document.getElementById('forgotSuccess');
+  var resetError = document.getElementById('resetError');
+  var resetSuccess = document.getElementById('resetSuccess');
+  var navLoggedOut = document.getElementById('navAuthLoggedOut');
+  var navLoggedIn = document.getElementById('navAuthLoggedIn');
+  var navUserName = document.getElementById('navUserName');
+  var currentSession = null;
+
+  function refreshNav(session) {
+    currentSession = session;
+    if (session && session.user) {
+      var fullName = (session.user.user_metadata && session.user.user_metadata.full_name) || session.user.email.split('@')[0];
+      navLoggedOut.style.display = 'none';
+      navLoggedIn.style.display = 'flex';
+      navUserName.textContent = 'Hi, ' + fullName.split(' ')[0];
+    } else {
+      navLoggedOut.style.display = 'flex';
+      navLoggedIn.style.display = 'none';
+    }
+  }
+
+  var allForms = [signupForm, loginForm, forgotForm, resetForm];
+  function showView(view) {
+    allForms.forEach(function(f){ f.style.display = 'none'; });
+    [signupError, loginError, forgotError, resetError].forEach(function(el){ el.textContent = ''; });
+    [signupSuccess, forgotSuccess, resetSuccess].forEach(function(el){ el.textContent = ''; });
+
+    if (view === 'signup') {
+      signupForm.style.display = 'block';
+      authTabsEl.style.display = 'flex';
+      tabSignup.classList.add('active'); tabLogin.classList.remove('active');
+    } else if (view === 'login') {
+      loginForm.style.display = 'block';
+      authTabsEl.style.display = 'flex';
+      tabLogin.classList.add('active'); tabSignup.classList.remove('active');
+    } else if (view === 'forgot') {
+      forgotForm.style.display = 'block';
+      authTabsEl.style.display = 'none';
+    } else if (view === 'reset') {
+      resetForm.style.display = 'block';
+      authTabsEl.style.display = 'none';
+    }
+  }
+
+  function openAuth(view) {
+    showView(view || 'signup');
+    authOverlay.classList.add('show');
+  }
+  function closeAuth() {
+    authOverlay.classList.remove('show');
+  }
+
+  document.getElementById('openSignup').addEventListener('click', function(e){ e.preventDefault(); openAuth('signup'); });
+  document.getElementById('openLogin').addEventListener('click', function(e){ e.preventDefault(); openAuth('login'); });
+  document.getElementById('goToLogin').addEventListener('click', function(e){ e.preventDefault(); showView('login'); });
+  document.getElementById('goToSignup').addEventListener('click', function(e){ e.preventDefault(); showView('signup'); });
+  document.getElementById('goToForgot').addEventListener('click', function(e){ e.preventDefault(); showView('forgot'); });
+  document.getElementById('backToLogin').addEventListener('click', function(e){ e.preventDefault(); showView('login'); });
+  document.getElementById('authClose').addEventListener('click', closeAuth);
+  authOverlay.addEventListener('click', function(e){ if (e.target === authOverlay) closeAuth(); });
+  tabSignup.addEventListener('click', function(){ showView('signup'); });
+  tabLogin.addEventListener('click', function(){ showView('login'); });
+
+  signupForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    signupError.textContent = '';
+    signupSuccess.textContent = '';
+    var name = document.getElementById('suName').value.trim();
+    var email = document.getElementById('suEmail').value.trim();
+    var password = document.getElementById('suPassword').value;
+    var submitBtn = signupForm.querySelector('.auth-submit');
+    submitBtn.disabled = true;
+    var result = await supabaseClient.auth.signUp({
+      email: email,
+      password: password,
+      options: { data: { full_name: name } }
+    });
+    submitBtn.disabled = false;
+    if (result.error) {
+      signupError.textContent = result.error.message;
+      return;
+    }
+    if (result.data.session) {
+      refreshNav(result.data.session);
+      closeAuth();
+      signupForm.reset();
+    } else {
+      signupSuccess.textContent = 'Check your email to confirm your account, then log in.';
+      signupForm.reset();
+    }
+  });
+
+  loginForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    loginError.textContent = '';
+    var email = document.getElementById('liEmail').value.trim();
+    var password = document.getElementById('liPassword').value;
+    var submitBtn = loginForm.querySelector('.auth-submit');
+    submitBtn.disabled = true;
+    var result = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
+    submitBtn.disabled = false;
+    if (result.error) {
+      loginError.textContent = result.error.message;
+      return;
+    }
+    refreshNav(result.data.session);
+    closeAuth();
+    loginForm.reset();
+  });
+
+  forgotForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    forgotError.textContent = '';
+    forgotSuccess.textContent = '';
+    var email = document.getElementById('fpEmail').value.trim();
+    var submitBtn = forgotForm.querySelector('.auth-submit');
+    submitBtn.disabled = true;
+    var result = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.href.split('#')[0]
+    });
+    submitBtn.disabled = false;
+    if (result.error) {
+      forgotError.textContent = result.error.message;
+      return;
+    }
+    forgotSuccess.textContent = "If that email has an account, we've sent a reset link to it.";
+    forgotForm.reset();
+  });
+
+  resetForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    resetError.textContent = '';
+    resetSuccess.textContent = '';
+    var newPassword = document.getElementById('rpPassword').value;
+    var submitBtn = resetForm.querySelector('.auth-submit');
+    submitBtn.disabled = true;
+    var result = await supabaseClient.auth.updateUser({ password: newPassword });
+    submitBtn.disabled = false;
+    if (result.error) {
+      resetError.textContent = result.error.message;
+      return;
+    }
+    resetSuccess.textContent = 'Password updated. You\'re signed in.';
+    resetForm.reset();
+    refreshNav(result.data.session);
+    setTimeout(closeAuth, 1500);
+  });
+
+  document.getElementById('logoutLink').addEventListener('click', async function(e){
+    e.preventDefault();
+    await supabaseClient.auth.signOut();
+    refreshNav(null);
+  });
+
+  /* ---------- My requests ---------- */
+  var requestsOverlay = document.getElementById('requestsOverlay');
+  var requestsList = document.getElementById('requestsList');
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+
+  function formatDate(iso) {
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch (e) { return iso; }
+  }
+
+  async function openRequests() {
+    requestsOverlay.classList.add('show');
+    requestsList.innerHTML = '<div class="requests-empty" id="requestsLoading">Loading&hellip;</div>';
+    if (!currentSession) return;
+
+    var result = await supabaseClient
+      .from('quote_requests')
+      .select('*')
+      .eq('user_id', currentSession.user.id)
+      .order('created_at', { ascending: false });
+
+    if (result.error) {
+      requestsList.innerHTML = '<div class="requests-empty">Couldn\'t load your requests right now.</div>';
+      return;
+    }
+    if (!result.data || result.data.length === 0) {
+      requestsList.innerHTML = '<div class="requests-empty">No quote requests yet. Once you submit one, it\'ll show up here.</div>';
+      return;
+    }
+
+    requestsList.innerHTML = result.data.map(function(r){
+      return '<div class="request-item">' +
+        '<div class="request-item-top">' +
+          '<div class="request-item-cat">' + escapeHtml(r.category || 'General inquiry') + '</div>' +
+          '<div class="request-item-date">' + formatDate(r.created_at) + '</div>' +
+        '</div>' +
+        '<div class="request-item-meta">' + escapeHtml(r.volume || '') + (r.destination ? ' &middot; to ' + escapeHtml(r.destination) : '') + '</div>' +
+        (r.details ? '<div class="request-item-details">' + escapeHtml(r.details) + '</div>' : '') +
+        '<div class="request-status">' + escapeHtml(r.status || 'new') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+  function closeRequests() { requestsOverlay.classList.remove('show'); }
+
+  document.getElementById('openRequests').addEventListener('click', function(e){ e.preventDefault(); openRequests(); });
+  document.getElementById('requestsClose').addEventListener('click', closeRequests);
+  requestsOverlay.addEventListener('click', function(e){ if (e.target === requestsOverlay) closeRequests(); });
+
+  supabaseClient.auth.onAuthStateChange(function(event, session){
+    if (event === 'PASSWORD_RECOVERY') {
+      openAuth('reset');
+      return;
+    }
+    refreshNav(session);
+  });
+
+  supabaseClient.auth.getSession().then(function(result){
+    refreshNav(result.data.session);
+  });
+</script>
+
+</body>
+</html>

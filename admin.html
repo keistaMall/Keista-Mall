@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Keista Mall Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root {
+    --paper: #ECE6D6; --paper-2: #E2DBC6; --ink: #1C2B39; --ink-soft: #45566A;
+    --navy: #16324F; --navy-deep: #0F2236; --brass: #A9782A; --brass-light: #C99A46;
+    --stamp: #A5432C; --line: #C7BFA8;
+    --font-head: 'Fraunces', serif; --font-body: 'IBM Plex Sans', sans-serif; --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--paper); color: var(--ink); font-family: var(--font-body);
+    font-size: 15px; line-height: 1.5;
+    padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  h1, h2, h3 { font-family: var(--font-head); margin: 0; }
+
+  header {
+    background: var(--navy-deep); color: var(--paper);
+    padding: 18px 0; padding-top: calc(18px + env(safe-area-inset-top, 0px));
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; }
+  .brand { font-family: var(--font-head); font-size: 19px; font-weight: 700; display: flex; align-items: center; gap: 9px; }
+  .brand svg { width: 26px; height: 26px; }
+  .logout-btn {
+    background: none; border: 1px solid rgba(236,230,214,0.3); color: var(--paper);
+    padding: 7px 14px; border-radius: 4px; font-family: var(--font-body); font-size: 13px; cursor: pointer;
+  }
+  .logout-btn:hover { border-color: var(--brass-light); }
+
+  /* Gate screen */
+  .gate { display: flex; align-items: center; justify-content: center; min-height: 80vh; padding: 20px; }
+  .gate-box {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
+    padding: 34px 30px; max-width: 360px; width: 100%;
+  }
+  .gate-box h2 { font-size: 22px; margin-bottom: 6px; }
+  .gate-box p.sub { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 22px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; color: var(--ink-soft); margin-bottom: 6px; }
+  .field input {
+    width: 100%; border: 1px solid var(--line); background: var(--paper);
+    border-radius: 4px; padding: 10px 12px; font-family: var(--font-body); font-size: 14.5px; color: var(--ink);
+  }
+  .field input:focus { outline: 2px solid var(--brass); outline-offset: 1px; }
+  .btn-primary {
+    background: var(--brass); color: var(--navy-deep); font-weight: 600; border: none;
+    padding: 12px 20px; border-radius: 4px; font-size: 14.5px; cursor: pointer; width: 100%;
+  }
+  .btn-primary:hover { background: var(--brass-light); }
+  .gate-error { font-size: 13px; color: var(--stamp); margin-bottom: 10px; min-height: 0; }
+  .gate-error:empty { display: none; }
+  .denied { text-align: center; color: var(--ink-soft); font-size: 14px; }
+
+  /* Dashboard */
+  main { padding: 32px 0 60px; }
+  .stats-row { display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+  .stat-card {
+    background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
+    padding: 16px 20px; flex: 1; min-width: 140px;
+  }
+  .stat-card .num { font-family: var(--font-head); font-size: 26px; color: var(--brass); }
+  .stat-card .lbl { font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; }
+
+  .filter-row { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+  .filter-row select, .filter-row input {
+    border: 1px solid var(--line); background: var(--paper); border-radius: 4px;
+    padding: 8px 12px; font-family: var(--font-body); font-size: 13.5px; color: var(--ink);
+  }
+  .filter-row input { flex: 1; min-width: 180px; }
+
+  table { width: 100%; border-collapse: collapse; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  thead { background: var(--paper-2); }
+  th { text-align: left; font-size: 11.5px; text-transform: none; font-family: var(--font-mono); color: var(--ink-soft); padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 13.5px; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .cell-name { font-weight: 600; }
+  .cell-email { color: var(--ink-soft); font-size: 12.5px; }
+  .cell-details { max-width: 260px; color: var(--ink-soft); font-size: 12.5px; }
+  .status-select {
+    border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; font-family: var(--font-mono);
+    font-size: 11.5px; background: var(--paper); color: var(--ink);
+  }
+  .status-select.st-new { color: var(--brass); border-color: var(--brass); }
+  .empty-row td { text-align: center; color: var(--ink-soft); padding: 30px; }
+  .table-wrap { overflow-x: auto; }
+  .save-hint { font-size: 11px; color: var(--ink-soft); margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="22" cy="22" r="19" fill="none" stroke="#C99A46" stroke-width="1.5"/>
+        <circle cx="22" cy="22" r="14" fill="none" stroke="#C99A46" stroke-width="0.75" opacity="0.5"/>
+        <text x="22" y="29.5" text-anchor="middle" font-family="Fraunces, serif" font-style="italic" font-weight="600" font-size="18" fill="#C99A46">K</text>
+      </svg>
+      Keista Mall Admin
+    </div>
+    <button class="logout-btn" id="logoutBtn" style="display:none;">Log out</button>
+  </div>
+</header>
+
+<div class="gate" id="gateView">
+  <div class="gate-box">
+    <h2>Admin sign in</h2>
+    <p class="sub">Sign in with your Keista Mall staff account.</p>
+    <form id="gateForm">
+      <div class="field">
+        <label for="gateEmail">Email</label>
+        <input id="gateEmail" type="email" required>
+      </div>
+      <div class="field">
+        <label for="gatePassword">Password</label>
+        <input id="gatePassword" type="password" required>
+      </div>
+      <div class="gate-error" id="gateError"></div>
+      <button type="submit" class="btn-primary">Sign in</button>
+    </form>
+  </div>
+</div>
+
+<div class="gate" id="deniedView" style="display:none;">
+  <div class="gate-box">
+    <h2>Not authorized</h2>
+    <p class="denied">This account doesn't have admin access. If you think that's wrong, ask another admin to grant it.</p>
+    <button class="btn-primary" id="deniedLogoutBtn" style="margin-top:18px;">Log out</button>
+  </div>
+</div>
+
+<main id="dashboardView" style="display:none;">
+  <div class="wrap">
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="filter-row">
+      <select id="statusFilter">
+        <option value="">All statuses</option>
+        <option value="new">New</option>
+        <option value="contacted">Contacted</option>
+        <option value="quoted">Quoted</option>
+        <option value="won">Won</option>
+        <option value="lost">Lost</option>
+      </select>
+      <input type="text" id="searchFilter" placeholder="Search by name, email, or category&hellip;">
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Client</th>
+            <th>Category</th>
+            <th>Volume</th>
+            <th>Destination</th>
+            <th>Details</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="requestsBody">
+          <tr class="empty-row"><td colspan="7">Loading&hellip;</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+  var SUPABASE_URL = 'https://ebovdmanbajozqebcvoc.supabase.co';
+  var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVib3ZkbWFuYmFqb3pxZWJjdm9jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxMDA3MDMsImV4cCI6MjEwNTY3NjcwM30.Cg_H69k4ImXchiuTo_WSA5TN_fVatQfiU--fUEagrXg';
+  var supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  var gateView = document.getElementById('gateView');
+  var deniedView = document.getElementById('deniedView');
+  var dashboardView = document.getElementById('dashboardView');
+  var gateForm = document.getElementById('gateForm');
+  var gateError = document.getElementById('gateError');
+  var logoutBtn = document.getElementById('logoutBtn');
+  var deniedLogoutBtn = document.getElementById('deniedLogoutBtn');
+  var allRequests = [];
+
+  function showView(view) {
+    gateView.style.display = view === 'gate' ? 'flex' : 'none';
+    deniedView.style.display = view === 'denied' ? 'flex' : 'none';
+    dashboardView.style.display = view === 'dashboard' ? 'block' : 'none';
+    logoutBtn.style.display = view === 'dashboard' ? 'inline-block' : 'none';
+  }
+
+  async function checkAdminAndLoad() {
+    var sessionResult = await supabaseClient.auth.getSession();
+    var session = sessionResult.data.session;
+    if (!session) { showView('gate'); return; }
+
+    var profileResult = await supabaseClient
+      .from('profiles')
+      .select('is_admin, full_name')
+      .eq('id', session.user.id)
+      .single();
+
+    if (profileResult.error || !profileResult.data || !profileResult.data.is_admin) {
+      showView('denied');
+      return;
+    }
+
+    showView('dashboard');
+    loadRequests();
+  }
+
+  gateForm.addEventListener('submit', async function(e){
+    e.preventDefault();
+    gateError.textContent = '';
+    var email = document.getElementById('gateEmail').value.trim();
+    var password = document.getElementById('gatePassword').value;
+    var submitBtn = gateForm.querySelector('button');
+    submitBtn.disabled = true;
+    var result = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
+    submitBtn.disabled = false;
+    if (result.error) {
+      gateError.textContent = result.error.message;
+      return;
+    }
+    checkAdminAndLoad();
+  });
+
+  async function doLogout() {
+    await supabaseClient.auth.signOut();
+    showView('gate');
+  }
+  logoutBtn.addEventListener('click', doLogout);
+  deniedLogoutBtn.addEventListener('click', doLogout);
+
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.textContent = str || '';
+    return div.innerHTML;
+  }
+  function formatDate(iso) {
+    try { return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }); }
+    catch (e) { return iso; }
+  }
+
+  function renderStats() {
+    var total = allRequests.length;
+    var byStatus = {};
+    allRequests.forEach(function(r){ byStatus[r.status || 'new'] = (byStatus[r.status || 'new'] || 0) + 1; });
+    var cards = [
+      { num: total, lbl: 'Total requests' },
+      { num: byStatus['new'] || 0, lbl: 'New' },
+      { num: byStatus['contacted'] || 0, lbl: 'Contacted' },
+      { num: byStatus['quoted'] || 0, lbl: 'Quoted' },
+      { num: byStatus['won'] || 0, lbl: 'Won' }
+    ];
+    document.getElementById('statsRow').innerHTML = cards.map(function(c){
+      return '<div class="stat-card"><div class="num">' + c.num + '</div><div class="lbl">' + c.lbl + '</div></div>';
+    }).join('');
+  }
+
+  function renderTable() {
+    var statusFilter = document.getElementById('statusFilter').value;
+    var search = document.getElementById('searchFilter').value.trim().toLowerCase();
+    var body = document.getElementById('requestsBody');
+
+    var filtered = allRequests.filter(function(r){
+      if (statusFilter && (r.status || 'new') !== statusFilter) return false;
+      if (search) {
+        var hay = ((r.full_name || '') + ' ' + (r.email || '') + ' ' + (r.category || '')).toLowerCase();
+        if (hay.indexOf(search) === -1) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      body.innerHTML = '<tr class="empty-row"><td colspan="7">No requests match.</td></tr>';
+      return;
+    }
+
+    body.innerHTML = filtered.map(function(r){
+      return '<tr>' +
+        '<td>' + formatDate(r.created_at) + '</td>' +
+        '<td><div class="cell-name">' + escapeHtml(r.full_name) + '</div><div class="cell-email">' + escapeHtml(r.email) + '</div></td>' +
+        '<td>' + escapeHtml(r.category || '&mdash;') + '</td>' +
+        '<td>' + escapeHtml(r.volume || '&mdash;') + '</td>' +
+        '<td>' + escapeHtml(r.destination || '&mdash;') + '</td>' +
+        '<td class="cell-details">' + escapeHtml(r.details || '') + '</td>' +
+        '<td>' +
+          '<select class="status-select st-' + (r.status || 'new') + '" data-id="' + r.id + '">' +
+            ['new','contacted','quoted','won','lost'].map(function(s){
+              return '<option value="' + s + '"' + ((r.status || 'new') === s ? ' selected' : '') + '>' + s + '</option>';
+            }).join('') +
+          '</select>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+
+    body.querySelectorAll('.status-select').forEach(function(sel){
+      sel.addEventListener('change', async function(){
+        var id = sel.getAttribute('data-id');
+        var newStatus = sel.value;
+        sel.disabled = true;
+        var result = await supabaseClient.from('quote_requests').update({ status: newStatus }).eq('id', id);
+        sel.disabled = false;
+        if (result.error) {
+          alert('Could not update status: ' + result.error.message);
+          return;
+        }
+        var row = allRequests.find(function(r){ return r.id === id; });
+        if (row) row.status = newStatus;
+        renderStats();
+      });
+    });
+  }
+
+  async function loadRequests() {
+    var result = await supabaseClient
+      .from('quote_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (result.error) {
+      document.getElementById('requestsBody').innerHTML =
+        '<tr class="empty-row"><td colspan="7">Couldn\'t load requests: ' + escapeHtml(result.error.message) + '</td></tr>';
+      return;
+    }
+    allRequests = result.data || [];
+    renderStats();
+    renderTable();
+  }
+
+  document.getElementById('statusFilter').addEventListener('change', renderTable);
+  document.getElementById('searchFilter').addEventListener('input', renderTable);
+
+  checkAdminAndLoad();
+</script>
+
+</body>
+</html>
