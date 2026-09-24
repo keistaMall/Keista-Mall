@@ -1142,6 +1142,7 @@
       refreshNav(result.data.session);
       closeAuth();
       signupForm.reset();
+      window.location.href = 'dashboard.html';
     } else {
       signupSuccess.textContent = 'Check your email to confirm your account, then log in.';
       signupForm.reset();
@@ -1164,6 +1165,7 @@
     refreshNav(result.data.session);
     closeAuth();
     loginForm.reset();
+    window.location.href = 'dashboard.html';
   });
 
   forgotForm.addEventListener('submit', async function(e){
